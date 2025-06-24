@@ -8,8 +8,9 @@ class ApprovalService {
   async getPendingChanges(): Promise<ChangeRequestResponse[]> {
     try {
       return await api.get<ChangeRequestResponse[]>('/approvals/pending');
-    } catch (error) {
-      throw new Error(`Failed to get pending changes: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to get pending changes: ${errorMessage}`);
     }
   }
 
@@ -19,8 +20,9 @@ class ApprovalService {
   async getChangeDetails(changeId: number): Promise<ChangeRequestResponse> {
     try {
       return await api.get<ChangeRequestResponse>(`/approvals/${changeId}`);
-    } catch (error) {
-      throw new Error(`Failed to get change details for ID ${changeId}: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to get change details for ID ${changeId}: ${errorMessage}`);
     }
   }
 
@@ -41,8 +43,9 @@ class ApprovalService {
         `/approvals/${changeId}/approve`,
         approvalRequest
       );
-    } catch (error) {
-      throw new Error(`Failed to approve change ${changeId}: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to approve change ${changeId}: ${errorMessage}`);
     }
   }
 
@@ -63,8 +66,9 @@ class ApprovalService {
         `/approvals/${changeId}/reject`,
         approvalRequest
       );
-    } catch (error) {
-      throw new Error(`Failed to reject change ${changeId}: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to reject change ${changeId}: ${errorMessage}`);
     }
   }
 
@@ -74,23 +78,34 @@ class ApprovalService {
   async getChangeHistory(): Promise<ChangeRequestResponse[]> {
     try {
       return await api.get<ChangeRequestResponse[]>('/approvals/history');
-    } catch (error) {
-      throw new Error(`Failed to get change history: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to get change history: ${errorMessage}`);
     }
   }
 
   /**
-   * Parse JSON data safely
+   * Parse JSON data safely - handles both strings and already parsed objects
    */
-  parseJsonData(jsonString: string | null | undefined): any {
-    if (!jsonString) return null;
+  parseJsonData(data: string | object | null | undefined): any {
+    if (!data) return null;
     
-    try {
-      return JSON.parse(jsonString);
-    } catch (error) {
-      console.error('Failed to parse JSON data:', error);
-      return null;
+    // If it's already an object, return it directly
+    if (typeof data === 'object') {
+      return data;
     }
+    
+    // If it's a string, try to parse it
+    if (typeof data === 'string') {
+      try {
+        return JSON.parse(data);
+      } catch (error) {
+        console.error('Failed to parse JSON data:', error);
+        return null;
+      }
+    }
+    
+    return null;
   }
 
   /**

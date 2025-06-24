@@ -139,7 +139,8 @@ class QueryService:
         sql = self.build_query_sql(query, parameters)
         
         # Execute the query
-        session = get_session_for_environment(environment)
+        SessionLocal = get_session_for_environment(environment)
+        session = SessionLocal()
         try:
             result = session.execute(text(sql))
             

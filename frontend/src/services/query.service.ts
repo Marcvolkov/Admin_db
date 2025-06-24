@@ -8,8 +8,9 @@ class QueryService {
   async getTableQueries(tableName: string): Promise<QueriesListResponse> {
     try {
       return await api.get<QueriesListResponse>(`/tables/${tableName}/queries`);
-    } catch (error) {
-      throw new Error(`Failed to get queries for table ${tableName}: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to get queries for table ${tableName}: ${errorMessage}`);
     }
   }
 
@@ -19,8 +20,9 @@ class QueryService {
   async executeQuery(tableName: string, queryExecution: QueryExecution): Promise<QueryResult> {
     try {
       return await api.post<QueryResult>(`/tables/${tableName}/query`, queryExecution);
-    } catch (error) {
-      throw new Error(`Failed to execute query: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to execute query: ${errorMessage}`);
     }
   }
 

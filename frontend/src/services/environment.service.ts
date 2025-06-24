@@ -31,7 +31,7 @@ class EnvironmentService {
     try {
       const response = await api.post<{ message: string; environment: string }>(
         '/environments/switch',
-        environment,
+        { environment },
         {
           headers: {
             'Content-Type': 'application/json',

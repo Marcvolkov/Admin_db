@@ -9,7 +9,12 @@ import {
   Snackbar,
   Alert,
   Tabs,
-  Tab
+  Tab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText
 } from '@mui/material';
 import {
   ArrowBack,
@@ -22,6 +27,7 @@ import { DataGrid } from '../components/tables/DataGrid';
 import { EditDialog } from '../components/tables/EditDialog';
 import { QueryExecutor } from '../components/queries/QueryExecutor';
 import { queryService } from '../services/query.service';
+import { dataService } from '../services/data.service';
 import { PredefinedQuery, QueryResult } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { useEnvironment } from '../hooks/useEnvironment';
@@ -34,6 +40,8 @@ export const TablePage: React.FC = () => {
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<any>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingRecord, setDeletingRecord] = useState<{ id: any; data: any } | null>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -91,13 +99,34 @@ export const TablePage: React.FC = () => {
   };
 
   const handleDeleteRecord = (recordId: any, rowData: any) => {
-    // TODO: Implement delete confirmation dialog
-    console.log('Delete record:', recordId, rowData);
-    setSnackbar({
-      open: true,
-      message: 'Delete functionality will be implemented in the approval workflow',
-      severity: 'info'
-    });
+    setDeletingRecord({ id: recordId, data: rowData });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingRecord || !tableName) return;
+
+    try {
+      const response = await dataService.deleteRecord(tableName, deletingRecord.id);
+      setSnackbar({
+        open: true,
+        message: `Delete request created successfully. Change Request ID: ${response.change_request_id}`,
+        severity: 'success'
+      });
+      setDeleteDialogOpen(false);
+      setDeletingRecord(null);
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error instanceof Error ? error.message : 'Failed to create delete request',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setDeletingRecord(null);
   };
 
   const handleEditSuccess = (changeRequestId: number) => {
@@ -234,6 +263,38 @@ export const TablePage: React.FC = () => {
         recordData={editingRecord}
         onSuccess={handleEditSuccess}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCancelDelete}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          Confirm Delete
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Are you sure you want to delete this record? This action will create a change request that requires approval.
+            {deletingRecord && (
+              <Box mt={2}>
+                <Typography variant="body2" color="text.secondary">
+                  Record ID: {deletingRecord.id}
+                </Typography>
+              </Box>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleConfirmDelete} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Snackbar for notifications */}
       <Snackbar

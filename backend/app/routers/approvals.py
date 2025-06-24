@@ -1,13 +1,86 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
+import json
 from sqlalchemy.orm import Session
-from ..database import get_metadata_db
+from sqlalchemy import text
+from ..database import get_metadata_db, get_session_for_environment
 from ..models.user import User
-from ..models.change_request import ChangeRequest, ChangeRequestStatus
+from ..models.change_request import ChangeRequest, ChangeRequestStatus, OperationType
 from ..schemas.change_request import ChangeRequestResponse, ApprovalRequest
 from ..services.auth_service import require_admin
+from ..config import Environment
 
 router = APIRouter()
+
+def safe_json_parse(json_str):
+    """Safely parse JSON string, return None if invalid"""
+    if not json_str:
+        return None
+    try:
+        return json.loads(json_str) if isinstance(json_str, str) else json_str
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+def apply_database_change(change: ChangeRequest) -> bool:
+    """Apply the approved change to the actual database"""
+    try:
+        # Get database session for the environment
+        env = Environment(change.environment)
+        SessionLocal = get_session_for_environment(env)
+        db = SessionLocal()
+        
+        try:
+            # Validate table name to prevent SQL injection
+            table_name = change.table_name
+            if not table_name.replace('_', '').isalnum():
+                raise ValueError("Invalid table name")
+            
+            if change.operation == OperationType.CREATE:
+                # Insert new record
+                new_data = safe_json_parse(change.new_data)
+                if not new_data:
+                    raise ValueError("No new data for CREATE operation")
+                
+                # Build INSERT query
+                columns = list(new_data.keys())
+                placeholders = [f":{col}" for col in columns]
+                query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({', '.join(placeholders)})"
+                
+                db.execute(text(query), new_data)
+                
+            elif change.operation == OperationType.UPDATE:
+                # Update existing record
+                new_data = safe_json_parse(change.new_data)
+                if not new_data or not change.record_id:
+                    raise ValueError("No new data or record ID for UPDATE operation")
+                
+                # Build UPDATE query
+                set_clauses = [f"{col} = :{col}" for col in new_data.keys()]
+                query = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE id = :record_id"
+                
+                # Add record_id to parameters
+                params = new_data.copy()
+                params['record_id'] = change.record_id
+                
+                db.execute(text(query), params)
+                
+            elif change.operation == OperationType.DELETE:
+                # Delete record
+                if not change.record_id:
+                    raise ValueError("No record ID for DELETE operation")
+                
+                query = f"DELETE FROM {table_name} WHERE id = :record_id"
+                db.execute(text(query), {"record_id": change.record_id})
+            
+            db.commit()
+            return True
+            
+        finally:
+            db.close()
+            
+    except Exception as e:
+        print(f"Error applying database change: {e}")
+        return False
 
 @router.get("/pending", response_model=List[ChangeRequestResponse])
 def get_pending_changes(
@@ -28,8 +101,8 @@ def get_pending_changes(
             "table_name": change.table_name,
             "record_id": change.record_id,
             "operation": change.operation,
-            "old_data": change.old_data,
-            "new_data": change.new_data,
+            "old_data": safe_json_parse(change.old_data),
+            "new_data": safe_json_parse(change.new_data),
             "requested_by": change.requested_by,
             "requested_at": change.requested_at,
             "status": change.status,
@@ -59,8 +132,8 @@ def get_change_details(
         "table_name": change.table_name,
         "record_id": change.record_id,
         "operation": change.operation,
-        "old_data": change.old_data,
-        "new_data": change.new_data,
+        "old_data": safe_json_parse(change.old_data),
+        "new_data": safe_json_parse(change.new_data),
         "requested_by": change.requested_by,
         "requested_at": change.requested_at,
         "status": change.status,
@@ -89,10 +162,14 @@ def approve_change(
     
     # Update change request status
     if approval.approved:
-        change.status = ChangeRequestStatus.APPROVED
-        # TODO: Apply the actual database change
-        # TODO: Create snapshot
-        message = "Change request approved and applied"
+        # Apply the actual database change
+        success = apply_database_change(change)
+        if success:
+            change.status = ChangeRequestStatus.APPROVED
+            message = "Change request approved and applied"
+        else:
+            change.status = ChangeRequestStatus.REJECTED
+            message = "Change request approved but failed to apply - marked as rejected"
     else:
         change.status = ChangeRequestStatus.REJECTED
         message = "Change request rejected"
@@ -147,8 +224,8 @@ def get_change_history(
             "table_name": change.table_name,
             "record_id": change.record_id,
             "operation": change.operation,
-            "old_data": change.old_data,
-            "new_data": change.new_data,
+            "old_data": safe_json_parse(change.old_data),
+            "new_data": safe_json_parse(change.new_data),
             "requested_by": change.requested_by,
             "requested_at": change.requested_at,
             "status": change.status,

@@ -5,14 +5,14 @@ from enum import Enum as PyEnum
 from ..database import Base
 
 class OperationType(PyEnum):
-    CREATE = "create"
-    UPDATE = "update"
-    DELETE = "delete"
+    CREATE = "CREATE"
+    UPDATE = "UPDATE"
+    DELETE = "DELETE"
 
 class ChangeRequestStatus(PyEnum):
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
 
 class ChangeRequest(Base):
     __tablename__ = "change_requests"

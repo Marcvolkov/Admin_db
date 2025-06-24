@@ -8,8 +8,9 @@ class TableService {
   async getTables(): Promise<string[]> {
     try {
       return await api.get<string[]>('/tables');
-    } catch (error) {
-      throw new Error(`Failed to get tables: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to get tables: ${errorMessage}`);
     }
   }
 
@@ -19,8 +20,9 @@ class TableService {
   async getTableSchema(tableName: string): Promise<TableInfo> {
     try {
       return await api.get<TableInfo>(`/tables/${tableName}/schema`);
-    } catch (error) {
-      throw new Error(`Failed to get table schema for ${tableName}: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to get table schema for ${tableName}: ${errorMessage}`);
     }
   }
 
@@ -48,8 +50,9 @@ class TableService {
       }
 
       return await api.get<TableData>(`/tables/${tableName}/data?${params.toString()}`);
-    } catch (error) {
-      throw new Error(`Failed to get table data for ${tableName}: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to get table data for ${tableName}: ${errorMessage}`);
     }
   }
 
@@ -62,8 +65,9 @@ class TableService {
         query_id: queryId,
         parameters: params || {}
       });
-    } catch (error) {
-      throw new Error(`Failed to execute query ${queryId} on ${tableName}: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to execute query ${queryId} on ${tableName}: ${errorMessage}`);
     }
   }
 

@@ -12,8 +12,9 @@ class DataService {
         `/data/${tableName}/records`, 
         data
       );
-    } catch (error) {
-      throw new Error(`Failed to create record in ${tableName}: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to create record in ${tableName}: ${errorMessage}`);
     }
   }
 
@@ -31,8 +32,9 @@ class DataService {
         `/data/${tableName}/records/${recordId}`, 
         data
       );
-    } catch (error) {
-      throw new Error(`Failed to update record ${recordId} in ${tableName}: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to update record ${recordId} in ${tableName}: ${errorMessage}`);
     }
   }
 
@@ -48,8 +50,9 @@ class DataService {
       return await api.delete<{ message: string; change_request_id: number }>(
         `/data/${tableName}/records/${recordId}`
       );
-    } catch (error) {
-      throw new Error(`Failed to delete record ${recordId} from ${tableName}: ${error}`);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.details?.message || 'Unknown error occurred';
+      throw new Error(`Failed to delete record ${recordId} from ${tableName}: ${errorMessage}`);
     }
   }
 

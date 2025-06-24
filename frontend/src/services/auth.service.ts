@@ -29,7 +29,8 @@ class AuthService {
         console.error('Error message:', error.message);
         console.error('Error stack:', error.stack);
       }
-      throw new Error(`Login failed: ${error}`);
+      const errorMessage = (error as any)?.message || (error as any)?.details?.message || 'Unknown error occurred';
+      throw new Error(`Login failed: ${errorMessage}`);
     }
   }
 

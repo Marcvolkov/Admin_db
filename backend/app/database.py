@@ -87,29 +87,45 @@ def init_databases():
             db.add(regular_user)
             db.commit()
             
-        # Add sample data to dev environment
-        dev_engine = engines[Environment.DEV]
-        with dev_engine.connect() as conn:
-            # Insert sample users (PostgreSQL syntax)
-            conn.execute(text("""
-                INSERT INTO users (username, email, full_name) VALUES 
-                ('john_doe', 'john@example.com', 'John Doe'),
-                ('jane_smith', 'jane@example.com', 'Jane Smith'),
-                ('bob_wilson', 'bob@example.com', 'Bob Wilson')
-                ON CONFLICT (username) DO NOTHING
-            """))
-            
-            # Insert sample products (PostgreSQL syntax)
-            conn.execute(text("""
-                INSERT INTO products (name, price, category, description) VALUES 
-                ('Laptop Pro', 1299.99, 'Electronics', 'High-performance laptop'),
-                ('Wireless Mouse', 29.99, 'Electronics', 'Ergonomic wireless mouse'),
-                ('Office Chair', 199.99, 'Furniture', 'Comfortable office chair'),
-                ('Standing Desk', 399.99, 'Furniture', 'Adjustable standing desk'),
-                ('Coffee Mug', 12.99, 'Accessories', 'Ceramic coffee mug')
-                ON CONFLICT DO NOTHING
-            """))
-            conn.commit()
+        # Add sample data to all environments
+        sample_users = [
+            ('john_doe', 'john@example.com', 'John Doe'),
+            ('jane_smith', 'jane@example.com', 'Jane Smith'),
+            ('bob_wilson', 'bob@example.com', 'Bob Wilson'),
+            ('alice_brown', 'alice@example.com', 'Alice Brown'),
+        ]
+        
+        sample_products = [
+            ('Laptop Pro', 1299.99, 'Electronics', 'High-performance laptop'),
+            ('Wireless Mouse', 29.99, 'Electronics', 'Ergonomic wireless mouse'),
+            ('Office Chair', 199.99, 'Furniture', 'Comfortable office chair'),
+            ('Standing Desk', 399.99, 'Furniture', 'Adjustable standing desk'),
+            ('Coffee Mug', 12.99, 'Accessories', 'Ceramic coffee mug'),
+            ('Notebook', 8.99, 'Stationery', 'Lined notebook for notes'),
+            ('Pen Set', 15.99, 'Stationery', 'Set of ballpoint pens'),
+            ('Desk Lamp', 39.99, 'Accessories', 'LED desk lamp with dimmer'),
+        ]
+        
+        for env in Environment:
+            engine = engines[env]
+            with engine.connect() as conn:
+                # Insert sample users
+                for username, email, full_name in sample_users:
+                    conn.execute(text("""
+                        INSERT INTO users (username, email, full_name) VALUES 
+                        (:username, :email, :full_name)
+                        ON CONFLICT (username) DO NOTHING
+                    """), {"username": username, "email": email, "full_name": full_name})
+                
+                # Insert sample products
+                for name, price, category, description in sample_products:
+                    conn.execute(text("""
+                        INSERT INTO products (name, price, category, description) VALUES 
+                        (:name, :price, :category, :description)
+                        ON CONFLICT DO NOTHING
+                    """), {"name": name, "price": price, "category": category, "description": description})
+                
+                conn.commit()
             
     finally:
         db.close()

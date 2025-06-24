@@ -4,14 +4,14 @@
       "id": "users_all",
       "name": "All Users",
       "description": "Retrieve all users with their roles and creation dates",
-      "sql": "SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC",
+      "sql": "SELECT id, username, email, full_name, created_at FROM users ORDER BY created_at DESC",
       "parameters": []
     },
     {
       "id": "users_recent",
       "name": "Recent Users",
       "description": "Users created in the last N days",
-      "sql": "SELECT id, username, email, role, created_at FROM users WHERE created_at >= NOW() - INTERVAL '{days} days' ORDER BY created_at DESC",
+      "sql": "SELECT id, username, email, full_name, created_at FROM users WHERE created_at >= NOW() - INTERVAL '{days} days' ORDER BY created_at DESC",
       "parameters": [
         {
           "name": "days",
@@ -24,25 +24,25 @@
       ]
     },
     {
-      "id": "users_by_role",
-      "name": "Users by Role",
-      "description": "Filter users by their role",
-      "sql": "SELECT id, username, email, role, created_at FROM users WHERE role = '{role}' ORDER BY username",
+      "id": "users_search",
+      "name": "Search Users",
+      "description": "Search users by username",
+      "sql": "SELECT id, username, email, full_name, created_at FROM users WHERE username LIKE '%{search_term}%' ORDER BY username",
       "parameters": [
         {
-          "name": "role",
-          "type": "select",
-          "description": "User role",
-          "options": ["admin", "user"],
-          "default": "user"
+          "name": "search_term",
+          "type": "text",
+          "description": "Search term for username",
+          "default": "",
+          "maxLength": 50
         }
       ]
     },
     {
-      "id": "users_count_by_role",
-      "name": "User Count by Role",
-      "description": "Count of users grouped by role",
-      "sql": "SELECT role, COUNT(*) as user_count FROM users GROUP BY role ORDER BY user_count DESC",
+      "id": "users_by_email_domain",
+      "name": "Users by Email Domain",
+      "description": "Group users by email domain",
+      "sql": "SELECT SUBSTRING(email FROM '@(.*)$') as domain, COUNT(*) as user_count FROM users GROUP BY SUBSTRING(email FROM '@(.*)$') ORDER BY user_count DESC",
       "parameters": []
     }
   ],
@@ -64,7 +64,7 @@
           "name": "category",
           "type": "select",
           "description": "Product category",
-          "options": ["Electronics", "Clothing", "Books", "Home & Garden", "Sports", "Toys"],
+          "options": ["Electronics", "Furniture", "Accessories", "Stationery"],
           "default": "Electronics"
         }
       ]
