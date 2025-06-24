@@ -138,13 +138,23 @@ def create_table_snapshot(environment: Environment, table_name: str, change_requ
     try:
         # Get all data from table
         result = db.execute(text(f"SELECT * FROM {table_name}"))
-        rows = [dict(row._mapping) for row in result.fetchall()]
+        rows = []
+        
+        for row in result.fetchall():
+            row_dict = dict(row._mapping)
+            # Convert datetime objects to ISO format strings
+            for key, value in row_dict.items():
+                if isinstance(value, datetime):
+                    row_dict[key] = value.isoformat()
+                elif hasattr(value, '__str__') and str(type(value)) == "<class 'decimal.Decimal'>":
+                    row_dict[key] = str(value)
+            rows.append(row_dict)
         
         # Create snapshot record
         snapshot = Snapshot(
             environment=environment.value,
             table_name=table_name,
-            snapshot_data=json.dumps(rows),
+            snapshot_data=json.dumps(rows, default=str),
             change_request_id=change_request_id
         )
         

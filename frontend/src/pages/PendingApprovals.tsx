@@ -31,10 +31,13 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { ChangeRequestResponse } from '../types';
 import { approvalService } from '../services/approval.service';
+import { snapshotService } from '../services/snapshot.service';
+import { useErrorHandler } from '../hooks/useErrorHandler';
 import { formatRelativeDate } from '../utils';
 
 export const PendingApprovals: React.FC = () => {
   const navigate = useNavigate();
+  const { showSuccessSnackbar, showErrorSnackbar } = useErrorHandler();
 
   const [changes, setChanges] = useState<ChangeRequestResponse[]>([]);
   const [filteredChanges, setFilteredChanges] = useState<ChangeRequestResponse[]>([]);
@@ -96,10 +99,21 @@ export const PendingApprovals: React.FC = () => {
 
   const handleQuickApprove = async (changeId: number) => {
     try {
-      await approvalService.approveChange(changeId);
+      const result = await approvalService.approveChange(changeId);
+      
+      // Extract snapshot ID from the response message
+      const snapshotId = snapshotService.extractSnapshotIdFromMessage(result.message);
+      
+      // Show success notification with snapshot information
+      if (snapshotId) {
+        showSuccessSnackbar(`✅ Change approved and applied! Snapshot #${snapshotId} created.`);
+      } else {
+        showSuccessSnackbar('✅ Change approved and applied successfully!');
+      }
+      
       await loadPendingChanges(); // Refresh the list
     } catch (error) {
-      console.error('Failed to approve change:', error);
+      showErrorSnackbar(error instanceof Error ? error.message : 'Failed to approve change');
     }
   };
 

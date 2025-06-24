@@ -8,6 +8,7 @@ from ..models.user import User
 from ..models.change_request import ChangeRequest, ChangeRequestStatus, OperationType
 from ..schemas.change_request import ChangeRequestResponse, ApprovalRequest
 from ..services.auth_service import require_admin
+from ..services.approval_logic import create_table_snapshot
 from ..config import Environment
 
 router = APIRouter()
@@ -162,14 +163,25 @@ def approve_change(
     
     # Update change request status
     if approval.approved:
-        # Apply the actual database change
-        success = apply_database_change(change)
-        if success:
-            change.status = ChangeRequestStatus.APPROVED
-            message = "Change request approved and applied"
-        else:
+        try:
+            # Create snapshot before applying change
+            snapshot_id = create_table_snapshot(
+                Environment(change.environment), 
+                change.table_name, 
+                change.id
+            )
+            
+            # Apply the actual database change
+            success = apply_database_change(change)
+            if success:
+                change.status = ChangeRequestStatus.APPROVED
+                message = f"Change request approved and applied (snapshot #{snapshot_id} created)"
+            else:
+                change.status = ChangeRequestStatus.REJECTED
+                message = "Change request approved but failed to apply - marked as rejected"
+        except Exception as e:
             change.status = ChangeRequestStatus.REJECTED
-            message = "Change request approved but failed to apply - marked as rejected"
+            message = f"Failed to create snapshot or apply change: {str(e)}"
     else:
         change.status = ChangeRequestStatus.REJECTED
         message = "Change request rejected"

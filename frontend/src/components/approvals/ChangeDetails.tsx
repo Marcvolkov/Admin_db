@@ -28,12 +28,15 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChangeRequestResponse } from '../../types';
 import { approvalService } from '../../services/approval.service';
+import { snapshotService } from '../../services/snapshot.service';
+import { useErrorHandler } from '../../hooks/useErrorHandler';
 import { formatDate, formatRelativeDate } from '../../utils';
 import { DiffViewer } from './DiffViewer';
 
 export const ChangeDetails: React.FC = () => {
   const { changeId } = useParams<{ changeId: string }>();
   const navigate = useNavigate();
+  const { showSuccessSnackbar, showErrorSnackbar } = useErrorHandler();
 
   const [change, setChange] = useState<ChangeRequestResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,16 +82,29 @@ export const ChangeDetails: React.FC = () => {
       setProcessing(true);
       
       if (isApproving) {
-        await approvalService.approveChange(change.id, comment || undefined);
+        const result = await approvalService.approveChange(change.id, comment || undefined);
+        
+        // Extract snapshot ID from the response message
+        const snapshotId = snapshotService.extractSnapshotIdFromMessage(result.message);
+        
+        // Show success notification with snapshot information
+        if (snapshotId) {
+          showSuccessSnackbar(`✅ Change approved and applied! Snapshot #${snapshotId} created for ${change.table_name} table.`);
+        } else {
+          showSuccessSnackbar('✅ Change approved and applied successfully!');
+        }
       } else {
         await approvalService.rejectChange(change.id, comment || 'Rejected from details view');
+        showSuccessSnackbar('❌ Change request rejected.');
       }
 
       setApprovalDialogOpen(false);
       // Reload to get updated status
       await loadChangeDetails();
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to process approval');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process approval';
+      setError(errorMessage);
+      showErrorSnackbar(errorMessage);
     } finally {
       setProcessing(false);
     }

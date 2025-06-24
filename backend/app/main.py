@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from .database import init_databases
-from .routers import auth, environments, tables, data, approvals, queries
+from .routers import auth, environments, tables, data, approvals, queries, snapshots
 from .core.middleware import RequestLoggingMiddleware, ErrorHandlingMiddleware, SecurityHeadersMiddleware
 
 @asynccontextmanager
@@ -35,6 +35,7 @@ app.include_router(tables.router, prefix="/tables", tags=["Tables"])
 app.include_router(data.router, prefix="/data", tags=["Data"])
 app.include_router(approvals.router, prefix="/approvals", tags=["Approvals"])
 app.include_router(queries.router, prefix="/queries", tags=["Queries"])
+app.include_router(snapshots.router, prefix="/snapshots", tags=["Snapshots"])
 
 @app.get("/")
 def root():

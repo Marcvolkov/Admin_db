@@ -21,7 +21,8 @@ import {
   PendingActions,
   Dashboard,
   Storage as DatabaseIcon,
-  Warning
+  Warning,
+  CameraAlt as SnapshotIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -96,13 +97,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
       icon: <Dashboard />,
       adminOnly: false
     },
-    ...(isAdmin() ? [{
-      label: 'Pending Approvals',
-      path: '/approvals',
-      icon: <PendingActions />,
-      adminOnly: true,
-      badge: pendingCount > 0 ? pendingCount : undefined
-    }] : [])
+    ...(isAdmin() ? [
+      {
+        label: 'Pending Approvals',
+        path: '/approvals',
+        icon: <PendingActions />,
+        adminOnly: true,
+        badge: pendingCount > 0 ? pendingCount : undefined
+      },
+      {
+        label: 'Snapshots',
+        path: '/snapshots',
+        icon: <SnapshotIcon />,
+        adminOnly: true
+      }
+    ] : [])
   ];
 
   return (

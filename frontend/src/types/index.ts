@@ -169,3 +169,6 @@ export interface QueriesListResponse {
   table_name: string;
   queries: PredefinedQuery[];
 }
+
+// Re-export snapshot types
+export * from './snapshot';

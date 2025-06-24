@@ -14,6 +14,7 @@ import { Dashboard } from './pages/Dashboard';
 import { TablesPage } from './pages/TablesPage';
 import { TablePage } from './pages/TablePage';
 import { PendingApprovals } from './pages/PendingApprovals';
+import { SnapshotsPage } from './pages/SnapshotsPage';
 import { ChangeDetails } from './components/approvals/ChangeDetails';
 
 // Create theme
@@ -103,6 +104,16 @@ function App() {
                     <PrivateRoute adminOnly>
                       <Layout>
                         <ChangeDetails />
+                      </Layout>
+                    </PrivateRoute>
+                  } 
+                />
+                <Route 
+                  path="/snapshots" 
+                  element={
+                    <PrivateRoute adminOnly>
+                      <Layout>
+                        <SnapshotsPage />
                       </Layout>
                     </PrivateRoute>
                   } 
