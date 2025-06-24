@@ -1,0 +1,135 @@
+{
+  "users": [
+    {
+      "id": "users_all",
+      "name": "All Users",
+      "description": "Retrieve all users with their roles and creation dates",
+      "sql": "SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC",
+      "parameters": []
+    },
+    {
+      "id": "users_recent",
+      "name": "Recent Users",
+      "description": "Users created in the last N days",
+      "sql": "SELECT id, username, email, role, created_at FROM users WHERE created_at >= NOW() - INTERVAL '{days} days' ORDER BY created_at DESC",
+      "parameters": [
+        {
+          "name": "days",
+          "type": "integer",
+          "description": "Number of days",
+          "default": 30,
+          "min": 1,
+          "max": 365
+        }
+      ]
+    },
+    {
+      "id": "users_by_role",
+      "name": "Users by Role",
+      "description": "Filter users by their role",
+      "sql": "SELECT id, username, email, role, created_at FROM users WHERE role = '{role}' ORDER BY username",
+      "parameters": [
+        {
+          "name": "role",
+          "type": "select",
+          "description": "User role",
+          "options": ["admin", "user"],
+          "default": "user"
+        }
+      ]
+    },
+    {
+      "id": "users_count_by_role",
+      "name": "User Count by Role",
+      "description": "Count of users grouped by role",
+      "sql": "SELECT role, COUNT(*) as user_count FROM users GROUP BY role ORDER BY user_count DESC",
+      "parameters": []
+    }
+  ],
+  "products": [
+    {
+      "id": "products_all",
+      "name": "All Products",
+      "description": "Retrieve all products with their details",
+      "sql": "SELECT id, name, price, category FROM products ORDER BY name",
+      "parameters": []
+    },
+    {
+      "id": "products_by_category",
+      "name": "Products by Category",
+      "description": "Filter products by category",
+      "sql": "SELECT id, name, price, category FROM products WHERE category = '{category}' ORDER BY price DESC",
+      "parameters": [
+        {
+          "name": "category",
+          "type": "select",
+          "description": "Product category",
+          "options": ["Electronics", "Clothing", "Books", "Home & Garden", "Sports", "Toys"],
+          "default": "Electronics"
+        }
+      ]
+    },
+    {
+      "id": "products_price_range",
+      "name": "Products in Price Range",
+      "description": "Products within specified price range",
+      "sql": "SELECT id, name, price, category FROM products WHERE price BETWEEN {min_price} AND {max_price} ORDER BY price",
+      "parameters": [
+        {
+          "name": "min_price",
+          "type": "decimal",
+          "description": "Minimum price",
+          "default": 0,
+          "min": 0,
+          "max": 10000
+        },
+        {
+          "name": "max_price",
+          "type": "decimal",
+          "description": "Maximum price",
+          "default": 1000,
+          "min": 0,
+          "max": 10000
+        }
+      ]
+    },
+    {
+      "id": "products_expensive",
+      "name": "Most Expensive Products",
+      "description": "Top N most expensive products",
+      "sql": "SELECT id, name, price, category FROM products ORDER BY price DESC LIMIT {limit}",
+      "parameters": [
+        {
+          "name": "limit",
+          "type": "integer",
+          "description": "Number of products to return",
+          "default": 10,
+          "min": 1,
+          "max": 100
+        }
+      ]
+    },
+    {
+      "id": "products_category_stats",
+      "name": "Category Statistics",
+      "description": "Statistics by product category",
+      "sql": "SELECT category, COUNT(*) as product_count, AVG(price) as avg_price, MIN(price) as min_price, MAX(price) as max_price FROM products GROUP BY category ORDER BY product_count DESC",
+      "parameters": []
+    },
+    {
+      "id": "products_search",
+      "name": "Search Products",
+      "description": "Search products by name",
+      "sql": "SELECT id, name, price, category FROM products WHERE LOWER(name) LIKE LOWER('%{search_term}%') ORDER BY name",
+      "parameters": [
+        {
+          "name": "search_term",
+          "type": "text",
+          "description": "Search term",
+          "default": "",
+          "maxLength": 100
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: admin-db-postgres-prod
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-production_password_change_me}
+      POSTGRES_DB: metadata_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./docker/postgres/create-multiple-postgresql-databases.sh:/docker-entrypoint-initdb.d/02-create-databases.sh
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - admin-db-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: admin-db-backend-prod
+    environment:
+      - DATABASE_URL_DEV=postgresql://postgres:${POSTGRES_PASSWORD:-production_password_change_me}@postgres:5432/app_dev
+      - DATABASE_URL_TEST=postgresql://postgres:${POSTGRES_PASSWORD:-production_password_change_me}@postgres:5432/app_test
+      - DATABASE_URL_STAGE=postgresql://postgres:${POSTGRES_PASSWORD:-production_password_change_me}@postgres:5432/app_stage
+      - DATABASE_URL_PROD=postgresql://postgres:${POSTGRES_PASSWORD:-production_password_change_me}@postgres:5432/app_prod
+      - METADATA_DB_URL=postgresql://postgres:${POSTGRES_PASSWORD:-production_password_change_me}@postgres:5432/metadata_db
+      - SECRET_KEY=${SECRET_KEY:-please_change_this_secret_key_in_production}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - DEBUG=false
+      - ENVIRONMENT=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - admin-db-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        - REACT_APP_API_URL=${FRONTEND_API_URL:-http://localhost:8000}
+    container_name: admin-db-frontend-prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - admin-db-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: admin-db-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - admin-db-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  admin-db-network:
+    driver: bridge

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from .database import init_databases
 from .routers import auth, environments, tables, data, approvals
+from .core.middleware import RequestLoggingMiddleware, ErrorHandlingMiddleware, SecurityHeadersMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -12,6 +13,11 @@ async def lifespan(app: FastAPI):
     # Shutdown: cleanup if needed
 
 app = FastAPI(title="Admin DB API", version="1.0.0", lifespan=lifespan)
+
+# Add custom middleware (order matters - later middleware wraps earlier ones)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(ErrorHandlingMiddleware)
 
 # CORS configuration
 app.add_middleware(

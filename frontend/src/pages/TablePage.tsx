@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -6,18 +6,23 @@ import {
   Button,
   Breadcrumbs,
   Link,
-  Grid,
   Snackbar,
-  Alert
+  Alert,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   ArrowBack,
   TableChart,
-  NavigateNext
+  NavigateNext,
+  QueryStats
 } from '@mui/icons-material';
 import { TableSchema } from '../components/tables/TableSchema';
 import { DataGrid } from '../components/tables/DataGrid';
 import { EditDialog } from '../components/tables/EditDialog';
+import { QueryExecutor } from '../components/queries/QueryExecutor';
+import { queryService } from '../services/query.service';
+import { PredefinedQuery, QueryResult } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { useEnvironment } from '../hooks/useEnvironment';
 
@@ -38,6 +43,32 @@ export const TablePage: React.FC = () => {
     message: '',
     severity: 'info'
   });
+  const [currentTab, setCurrentTab] = useState(0);
+  const [queries, setQueries] = useState<PredefinedQuery[]>([]);
+  const [loadingQueries, setLoadingQueries] = useState(false);
+
+  useEffect(() => {
+    const loadQueries = async () => {
+      if (!tableName) return;
+      
+      try {
+        setLoadingQueries(true);
+        const response = await queryService.getTableQueries(tableName);
+        setQueries(response.queries);
+      } catch (error) {
+        console.error('Failed to load queries:', error);
+        setSnackbar({
+          open: true,
+          message: 'Failed to load predefined queries',
+          severity: 'warning'
+        });
+      } finally {
+        setLoadingQueries(false);
+      }
+    };
+
+    loadQueries();
+  }, [tableName]);
 
   if (!tableName) {
     return (
@@ -79,6 +110,14 @@ export const TablePage: React.FC = () => {
 
   const handleSnackbarClose = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
+  };
+
+  const handleQueryExecute = (result: QueryResult) => {
+    setSnackbar({
+      open: true,
+      message: `Query executed successfully. ${result.row_count} rows returned.`,
+      severity: 'success'
+    });
   };
 
   return (
@@ -132,24 +171,59 @@ export const TablePage: React.FC = () => {
       </Box>
 
       {/* Content */}
-      <Box display="flex" flexDirection="column" gap={3}>
-        {/* Table Schema */}
-        <Box>
-          <TableSchema tableName={tableName} />
+      <Box>
+        {/* Tabs */}
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+          <Tabs 
+            value={currentTab} 
+            onChange={(_, newValue) => setCurrentTab(newValue)}
+            aria-label="table page tabs"
+          >
+            <Tab 
+              label="Table Data" 
+              icon={<TableChart />}
+              iconPosition="start"
+            />
+            <Tab 
+              label={`Queries ${queries.length > 0 ? `(${queries.length})` : ''}`}
+              icon={<QueryStats />}
+              iconPosition="start"
+            />
+          </Tabs>
         </Box>
 
-        {/* Data Grid */}
-        <Box>
-          <Typography variant="h6" gutterBottom>
-            Table Data
-          </Typography>
-          <DataGrid
-            tableName={tableName}
-            onEditRecord={isAdmin() ? handleEditRecord : undefined}
-            onDeleteRecord={isAdmin() ? handleDeleteRecord : undefined}
-            onCreateRecord={isAdmin() ? handleCreateRecord : undefined}
-          />
-        </Box>
+        {/* Tab Content */}
+        {currentTab === 0 && (
+          <Box display="flex" flexDirection="column" gap={3}>
+            {/* Table Schema */}
+            <Box>
+              <TableSchema tableName={tableName} />
+            </Box>
+
+            {/* Data Grid */}
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Table Data
+              </Typography>
+              <DataGrid
+                tableName={tableName}
+                onEditRecord={isAdmin() ? handleEditRecord : undefined}
+                onDeleteRecord={isAdmin() ? handleDeleteRecord : undefined}
+                onCreateRecord={isAdmin() ? handleCreateRecord : undefined}
+              />
+            </Box>
+          </Box>
+        )}
+
+        {currentTab === 1 && (
+          <Box>
+            <QueryExecutor
+              tableName={tableName}
+              queries={queries}
+              onExecute={handleQueryExecute}
+            />
+          </Box>
+        )}
       </Box>
 
       {/* Edit Dialog */}

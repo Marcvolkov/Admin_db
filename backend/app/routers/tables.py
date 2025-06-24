@@ -5,7 +5,9 @@ from ..database import get_session_for_environment
 from ..config import Environment
 from ..models.user import User
 from ..services.auth_service import get_current_user
+from ..services.query_service import query_service
 from ..schemas.table import TableInfo, ColumnInfo, TableData
+from ..schemas.query import QueriesListResponse, QueryExecution, QueryResult
 from ..routers.environments import user_environments
 
 router = APIRouter()
@@ -117,3 +119,30 @@ def get_table_data(
         )
     finally:
         db.close()
+
+@router.get("/{table_name}/queries", response_model=QueriesListResponse)
+def get_table_queries(table_name: str, current_user: User = Depends(get_current_user)):
+    """Get list of predefined queries for a table"""
+    queries = query_service.get_queries_for_table(table_name)
+    return QueriesListResponse(table_name=table_name, queries=queries)
+
+@router.post("/{table_name}/query", response_model=QueryResult)
+async def execute_table_query(
+    table_name: str, 
+    query_execution: QueryExecution,
+    current_user: User = Depends(get_current_user)
+):
+    """Execute a predefined query on a table"""
+    try:
+        env = get_current_env(current_user.id)
+        result = await query_service.execute_query(
+            environment=env,
+            table_name=table_name,
+            query_id=query_execution.query_id,
+            parameters=query_execution.parameters
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Query execution failed: {str(e)}")

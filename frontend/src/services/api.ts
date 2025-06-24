@@ -70,10 +70,26 @@ apiClient.interceptors.response.use(
       window.location.href = '/login';
     }
     
-    // Handle other errors
-    const errorMessage = error.response?.data?.detail || error.message || 'An unexpected error occurred';
+    // Create structured error object
+    const errorDetails = {
+      message: error.message || 'An unexpected error occurred',
+      code: error.response?.data?.code || 'UNKNOWN_ERROR',
+      details: error.response?.data?.details || {},
+      request_id: error.response?.data?.request_id || error.response?.headers?.['x-request-id'],
+      status_code: error.response?.status
+    };
     
-    return Promise.reject(new Error(errorMessage));
+    // Use the structured error for better error handling
+    if (error.response?.data && typeof error.response.data === 'object') {
+      // API returned structured error
+      const apiError = error.response.data;
+      errorDetails.message = apiError.message || errorDetails.message;
+      errorDetails.code = apiError.code || errorDetails.code;
+      errorDetails.details = apiError.details || errorDetails.details;
+      errorDetails.request_id = apiError.request_id || errorDetails.request_id;
+    }
+    
+    return Promise.reject(errorDetails);
   }
 );
 
