@@ -6,23 +6,16 @@ import os
 
 Base = declarative_base()
 
-# Ensure data directory exists
-os.makedirs("data", exist_ok=True)
-
 # Database engines for different environments
-# Use connect_args only for SQLite
-connect_args = {"check_same_thread": False} if "sqlite" in settings.DATABASE_URL_DEV else {}
-
 engines = {
-    Environment.DEV: create_engine(settings.DATABASE_URL_DEV, connect_args=connect_args),
-    Environment.TEST: create_engine(settings.DATABASE_URL_TEST, connect_args=connect_args),
-    Environment.STAGE: create_engine(settings.DATABASE_URL_STAGE, connect_args=connect_args),
-    Environment.PROD: create_engine(settings.DATABASE_URL_PROD, connect_args=connect_args),
+    Environment.DEV: create_engine(settings.DATABASE_URL_DEV, pool_pre_ping=True),
+    Environment.TEST: create_engine(settings.DATABASE_URL_TEST, pool_pre_ping=True),
+    Environment.STAGE: create_engine(settings.DATABASE_URL_STAGE, pool_pre_ping=True),
+    Environment.PROD: create_engine(settings.DATABASE_URL_PROD, pool_pre_ping=True),
 }
 
 # Metadata database engine
-metadata_connect_args = {"check_same_thread": False} if "sqlite" in settings.METADATA_DB_URL else {}
-metadata_engine = create_engine(settings.METADATA_DB_URL, connect_args=metadata_connect_args)
+metadata_engine = create_engine(settings.METADATA_DB_URL, pool_pre_ping=True)
 MetadataSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=metadata_engine)
 
 def get_session_for_environment(env: Environment):
@@ -47,25 +40,25 @@ def init_databases():
     # Create sample tables in each environment
     for env in Environment:
         engine = engines[env]
-        # Create sample tables (users, products)
+        # Create sample tables (users, products) for PostgreSQL
         with engine.connect() as conn:
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY,
+                    id SERIAL PRIMARY KEY,
                     username VARCHAR(50) UNIQUE NOT NULL,
                     email VARCHAR(100) UNIQUE NOT NULL,
                     full_name VARCHAR(100),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                 )
             """))
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS products (
-                    id INTEGER PRIMARY KEY,
+                    id SERIAL PRIMARY KEY,
                     name VARCHAR(100) NOT NULL,
                     price DECIMAL(10,2) NOT NULL,
                     category VARCHAR(50) NOT NULL,
                     description TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                 )
             """))
             conn.commit()
@@ -97,22 +90,24 @@ def init_databases():
         # Add sample data to dev environment
         dev_engine = engines[Environment.DEV]
         with dev_engine.connect() as conn:
-            # Insert sample users
+            # Insert sample users (PostgreSQL syntax)
             conn.execute(text("""
-                INSERT OR IGNORE INTO users (username, email, full_name) VALUES 
+                INSERT INTO users (username, email, full_name) VALUES 
                 ('john_doe', 'john@example.com', 'John Doe'),
                 ('jane_smith', 'jane@example.com', 'Jane Smith'),
                 ('bob_wilson', 'bob@example.com', 'Bob Wilson')
+                ON CONFLICT (username) DO NOTHING
             """))
             
-            # Insert sample products
+            # Insert sample products (PostgreSQL syntax)
             conn.execute(text("""
-                INSERT OR IGNORE INTO products (name, price, category, description) VALUES 
+                INSERT INTO products (name, price, category, description) VALUES 
                 ('Laptop Pro', 1299.99, 'Electronics', 'High-performance laptop'),
                 ('Wireless Mouse', 29.99, 'Electronics', 'Ergonomic wireless mouse'),
                 ('Office Chair', 199.99, 'Furniture', 'Comfortable office chair'),
                 ('Standing Desk', 399.99, 'Furniture', 'Adjustable standing desk'),
                 ('Coffee Mug', 12.99, 'Accessories', 'Ceramic coffee mug')
+                ON CONFLICT DO NOTHING
             """))
             conn.commit()
             

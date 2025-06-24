@@ -8,12 +8,12 @@ class Environment(str, Enum):
     PROD = "prod"
 
 class Settings(BaseSettings):
-    # Database URLs
-    DATABASE_URL_DEV: str = "sqlite:///./data/app_dev.db"
-    DATABASE_URL_TEST: str = "sqlite:///./data/app_test.db"
-    DATABASE_URL_STAGE: str = "sqlite:///./data/app_stage.db"
-    DATABASE_URL_PROD: str = "sqlite:///./data/app_prod.db"
-    METADATA_DB_URL: str = "sqlite:///./data/metadata.db"
+    # PostgreSQL Database URLs
+    DATABASE_URL_DEV: str = "postgresql://postgres:password@localhost:5432/app_dev"
+    DATABASE_URL_TEST: str = "postgresql://postgres:password@localhost:5432/app_test"
+    DATABASE_URL_STAGE: str = "postgresql://postgres:password@localhost:5432/app_stage"
+    DATABASE_URL_PROD: str = "postgresql://postgres:password@localhost:5432/app_prod"
+    METADATA_DB_URL: str = "postgresql://postgres:password@localhost:5432/metadata_db"
     
     # JWT Settings
     SECRET_KEY: str = "your-secret-key-here"

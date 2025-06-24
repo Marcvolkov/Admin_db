@@ -23,10 +23,10 @@ def get_tables(current_user: User = Depends(get_current_user)):
     db = SessionLocal()
     
     try:
-        # For SQLite, get table names from sqlite_master
+        # For PostgreSQL, get table names from information_schema
         result = db.execute(text("""
-            SELECT name FROM sqlite_master 
-            WHERE type='table' AND name NOT LIKE 'sqlite_%'
+            SELECT table_name FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
         """))
         tables = [row[0] for row in result.fetchall()]
         return tables
@@ -41,16 +41,33 @@ def get_table_schema(table_name: str, current_user: User = Depends(get_current_u
     db = SessionLocal()
     
     try:
-        # Get column information for SQLite
-        result = db.execute(text(f"PRAGMA table_info({table_name})"))
+        # Get column information for PostgreSQL
+        result = db.execute(text(f"""
+            SELECT 
+                column_name,
+                data_type,
+                is_nullable,
+                column_default
+            FROM information_schema.columns 
+            WHERE table_name = '{table_name}' AND table_schema = 'public'
+            ORDER BY ordinal_position
+        """))
         columns = []
+        
+        # Get primary key information
+        pk_result = db.execute(text(f"""
+            SELECT column_name 
+            FROM information_schema.key_column_usage 
+            WHERE table_name = '{table_name}' AND constraint_name LIKE '%_pkey'
+        """))
+        primary_keys = [row[0] for row in pk_result.fetchall()]
         
         for row in result.fetchall():
             columns.append(ColumnInfo(
-                name=row[1],  # column name
-                type=row[2],  # data type
-                nullable=not row[3],  # not null flag
-                primary_key=bool(row[5])  # primary key flag
+                name=row[0],  # column name
+                type=row[1],  # data type
+                nullable=row[2] == 'YES',  # nullable flag
+                primary_key=row[0] in primary_keys  # primary key flag
             ))
         
         if not columns:
@@ -78,8 +95,13 @@ def get_table_data(
         total_count = count_result.fetchone()[0]
         
         # Get column names
-        schema_result = db.execute(text(f"PRAGMA table_info({table_name})"))
-        columns = [row[1] for row in schema_result.fetchall()]
+        schema_result = db.execute(text(f"""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = '{table_name}' AND table_schema = 'public'
+            ORDER BY ordinal_position
+        """))
+        columns = [row[0] for row in schema_result.fetchall()]
         
         # Get data
         data_result = db.execute(text(f"""

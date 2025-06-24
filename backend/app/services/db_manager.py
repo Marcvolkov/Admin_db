@@ -12,8 +12,8 @@ def get_table_list(environment: Environment) -> List[str]:
     
     try:
         result = db.execute(text("""
-            SELECT name FROM sqlite_master 
-            WHERE type='table' AND name NOT LIKE 'sqlite_%'
+            SELECT table_name FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
         """))
         tables = [row[0] for row in result.fetchall()]
         return tables
@@ -26,15 +26,33 @@ def get_table_schema(environment: Environment, table_name: str) -> TableInfo:
     db = SessionLocal()
     
     try:
-        result = db.execute(text(f"PRAGMA table_info({table_name})"))
+        # Get column information for PostgreSQL
+        result = db.execute(text(f"""
+            SELECT 
+                column_name,
+                data_type,
+                is_nullable,
+                column_default
+            FROM information_schema.columns 
+            WHERE table_name = '{table_name}' AND table_schema = 'public'
+            ORDER BY ordinal_position
+        """))
         columns = []
+        
+        # Get primary key information
+        pk_result = db.execute(text(f"""
+            SELECT column_name 
+            FROM information_schema.key_column_usage 
+            WHERE table_name = '{table_name}' AND constraint_name LIKE '%_pkey'
+        """))
+        primary_keys = [row[0] for row in pk_result.fetchall()]
         
         for row in result.fetchall():
             columns.append(ColumnInfo(
-                name=row[1],
-                type=row[2],
-                nullable=not row[3],
-                primary_key=bool(row[5])
+                name=row[0],
+                type=row[1],
+                nullable=row[2] == 'YES',
+                primary_key=row[0] in primary_keys
             ))
         
         return TableInfo(name=table_name, columns=columns)
@@ -72,8 +90,13 @@ def get_table_data(
         total_count = count_result.fetchone()[0]
         
         # Get column names
-        schema_result = db.execute(text(f"PRAGMA table_info({table_name})"))
-        columns = [row[1] for row in schema_result.fetchall()]
+        schema_result = db.execute(text(f"""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = '{table_name}' AND table_schema = 'public'
+            ORDER BY ordinal_position
+        """))
+        columns = [row[0] for row in schema_result.fetchall()]
         
         # Get data
         data_query = f"SELECT * FROM {table_name} {where_clause} LIMIT {limit} OFFSET {offset}"
